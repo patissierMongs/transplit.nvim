@@ -1,0 +1,90 @@
+10:12:10 [error] *1048 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.168
+10:12:45 [error] *1050 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.95
+10:13:18 [error] *1054 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.11
+10:13:45 [error] *1056 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.63
+10:14:13 [error] *1057 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.213
+10:14:28 [error] *1058 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.149
+10:14:32 [error] *1062 client intended to send too large body: 10485760 bytes, client: 203.0.113.13
+10:14:41 [error] *1067 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.109
+10:14:49 [error] *1072 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.145
+10:15:01 [error] *1074 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.150
+10:15:14 [error] *1080 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.26
+10:15:19 [error] *1081 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.160
+10:15:54 [error] *1088 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.200
+10:16:32 [error] *1096 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.94
+10:16:44 [error] *1100 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.22
+10:17:18 [error] *1108 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.226
+10:17:47 [error] *1113 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.157
+10:17:55 [alert] *1122 worker process 2211 exited on signal 9
+10:18:17 [error] *1125 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.240
+10:18:20 [error] *1127 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.197
+10:18:41 [error] *1133 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.179
+10:19:13 [error] *1141 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.19
+10:19:31 [error] *1149 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.180
+10:19:35 [error] *1154 client intended to send too large body: 10485760 bytes, client: 203.0.113.167
+10:20:04 [error] *1159 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.185
+10:20:27 [error] *1160 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.242
+10:20:38 [error] *1162 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.128
+10:20:57 [error] *1165 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.191
+10:21:23 [error] *1173 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.22
+10:21:49 [error] *1182 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.73
+10:22:17 [error] *1191 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.73
+10:22:40 [warn] *1198 an upstream response is buffered to a temporary file, client: 203.0.113.247
+10:22:46 [error] *1201 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.40
+10:23:01 [error] *1202 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.126
+10:23:13 [error] *1207 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.74
+10:23:40 [error] *1216 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.96
+10:24:01 [error] *1219 client intended to send too large body: 10485760 bytes, client: 203.0.113.178
+10:24:41 [error] *1220 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.118
+10:25:17 [error] *1227 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.103
+10:25:24 [error] *1235 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.164
+10:25:37 [error] *1237 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.55
+10:25:45 [error] *1243 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.155
+10:25:46 [error] *1246 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.139
+10:26:10 [error] *1247 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.20
+10:26:50 [error] *1254 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.40
+10:27:13 [error] *1260 client intended to send too large body: 10485760 bytes, client: 203.0.113.123
+10:27:45 [error] *1268 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.124
+10:27:51 [error] *1271 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.28
+10:28:08 [warn] *1279 an upstream response is buffered to a temporary file, client: 203.0.113.214
+10:28:42 [warn] *1280 an upstream response is buffered to a temporary file, client: 203.0.113.54
+10:29:16 [crit] *1286 SSL_do_handshake() failed (SSL: bad key share) while SSL handshaking, client: 203.0.113.39
+10:29:18 [warn] *1295 an upstream response is buffered to a temporary file, client: 203.0.113.78
+10:29:24 [alert] *1300 worker process 2211 exited on signal 9
+10:29:35 [error] *1306 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.199
+10:30:10 [error] *1315 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.86
+10:30:50 [error] *1319 client intended to send too large body: 10485760 bytes, client: 203.0.113.208
+10:31:16 [error] *1323 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.53
+10:31:39 [error] *1324 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.9
+10:32:10 [error] *1329 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.51
+10:32:33 [warn] *1337 an upstream response is buffered to a temporary file, client: 203.0.113.208
+10:32:56 [crit] *1343 SSL_do_handshake() failed (SSL: bad key share) while SSL handshaking, client: 203.0.113.22
+10:33:11 [error] *1351 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.52
+10:33:42 [error] *1352 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.124
+10:34:05 [error] *1354 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.215
+10:34:30 [error] *1358 client intended to send too large body: 10485760 bytes, client: 203.0.113.124
+10:34:58 [error] *1364 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.24
+10:35:24 [error] *1372 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.104
+10:35:30 [warn] *1375 an upstream response is buffered to a temporary file, client: 203.0.113.45
+10:35:32 [alert] *1378 worker process 2211 exited on signal 9
+10:35:42 [error] *1386 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.170
+10:35:52 [crit] *1395 SSL_do_handshake() failed (SSL: bad key share) while SSL handshaking, client: 203.0.113.142
+10:35:53 [error] *1397 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.136
+10:36:02 [warn] *1404 an upstream response is buffered to a temporary file, client: 203.0.113.225
+10:36:16 [error] *1405 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.66
+10:36:49 [error] *1409 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.197
+10:37:06 [error] *1418 client intended to send too large body: 10485760 bytes, client: 203.0.113.109
+10:37:10 [error] *1424 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.231
+10:37:48 [error] *1433 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.109
+10:38:21 [error] *1436 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.138
+10:38:54 [error] *1437 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.225
+10:39:06 [error] *1438 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.200
+10:39:18 [error] *1441 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.123
+10:39:26 [error] *1450 client intended to send too large body: 10485760 bytes, client: 203.0.113.17
+10:40:00 [error] *1459 connect() failed (111: Connection refused) while connecting to upstream, client: 203.0.113.144
+10:40:07 [error] *1468 open() "/srv/www/favicon.ico" failed (2: No such file or directory), client: 203.0.113.16
+10:40:25 [error] *1469 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.199
+10:40:54 [error] *1478 upstream timed out (110: Connection timed out) while reading response header from upstream, client: 203.0.113.9
+10:40:59 [error] *1486 limiting requests, excess: 20.450 by zone "api_limit", client: 203.0.113.85
+10:41:32 [error] *1495 client intended to send too large body: 10485760 bytes, client: 203.0.113.53
+10:42:01 [warn] *1504 an upstream response is buffered to a temporary file, client: 203.0.113.138
