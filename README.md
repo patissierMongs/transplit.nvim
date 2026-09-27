@@ -1,5 +1,9 @@
 # transplit.nvim
 
+[![CI](https://github.com/patissierMongs/transplit.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/patissierMongs/transplit.nvim/actions/workflows/ci.yml)
+[![Neovim 0.10+](https://img.shields.io/badge/Neovim-0.10%2B-57A143?logo=neovim&logoColor=white)](https://neovim.io)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 Neovim에서 **지금 보고 있는 것**을 파일의 문맥에 맞게 번역하고, 설명하고, 다이어그램으로 그려주는 플러그인이에요.
 로그, man 페이지, `--help` 출력, Dockerfile·compose 같은 설정 파일, 소스 코드, 패킷 캡처까지 다뤄요.
 
@@ -41,15 +45,17 @@ LLM 번역 플러그인은 이미 많아요. transplit은 **"줄마다 LLM에 �
 
 ```lua
 {
-  "patissierMongs/swayHelper",
-  name = "transplit.nvim",
+  "patissierMongs/transplit.nvim",
   cmd = { "TransSplit", "TransExplain", "TransExplainFile", "TransVisual" },
   keys = {
     { "<leader>tk", "<cmd>TransSplit<cr>", desc = "Translate page" },
     { "<leader>tK", "<cmd>TransSplit!<cr>", desc = "Translate whole file" },
-    { "<leader>te", "<cmd>TransExplain<cr>", mode = { "n", "x" }, desc = "Explain line/selection" },
+    { "<leader>te", "<cmd>TransExplain<cr>", desc = "Explain line" },
+    -- visual mode needs ":" (not <cmd>) so the selected range reaches the command
+    { "<leader>te", ":TransExplain<cr>", mode = "x", desc = "Explain selection" },
     { "<leader>tE", "<cmd>TransExplainFile<cr>", desc = "Explain whole file" },
-    { "<leader>tv", "<cmd>TransVisual<cr>", mode = { "n", "x" }, desc = "Visualize" },
+    { "<leader>tv", "<cmd>TransVisual<cr>", desc = "Visualize file" },
+    { "<leader>tv", ":TransVisual<cr>", mode = "x", desc = "Visualize selection" },
   },
   opts = {},
 }
