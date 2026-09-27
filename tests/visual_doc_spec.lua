@@ -46,6 +46,10 @@ describe("visual.doc", function()
   it("unwraps a document fenced as a whole", function()
     assert.are.equal("# T\n\n```d2\nx\n```", d.clean("```markdown\n# T\n\n```d2\nx\n```\n```"))
     assert.are.equal("# T", d.clean("  # T \n"))
+    -- commentary before the document (seen from the fix prompt) is dropped
+    assert.are.equal("# T\nbody", d.clean("The error was caused by $host.\n\n# T\nbody"))
+    -- text without any heading is kept as-is
+    assert.are.equal("no heading", d.clean("no heading"))
   end)
 
   it("finds non-ASCII D2 labels but ignores comments", function()

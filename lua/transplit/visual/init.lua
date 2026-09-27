@@ -66,6 +66,7 @@ function M.system_prompt()
     "Sequence diagrams: 'shape: sequence_diagram' first, then actors in order, then messages a -> b: \"msg\".",
     "Tables: shape: sql_table with fields like 'id: int {constraint: primary_key}'. No icons, no markdown labels, no",
     "vars/imports/layout settings. Keep each diagram under ~30 nodes.",
+    "Never put '$' in D2 labels (D2 substitutes variables): write nginx variables like $host as 'host' instead.",
     "Output ONLY the Markdown document, starting with '# <title>', no surrounding code fences.",
     "Structure: title, a 2-3 sentence summary, then for each visualization a '## ' heading, a one-line caption, the diagram,",
     "and tables/notes as needed. 2-4 diagrams total; quality over quantity.",
@@ -140,7 +141,10 @@ local function compile_d2(doc, cb)
         { text = true },
         vim.schedule_wrap(function(r)
           if r.code == 0 and r.stdout and r.stdout ~= "" then
-            b.ascii = vim.split((r.stdout:gsub("%s+$", "")), "\n")
+            -- d2 pads every line to the full width; with 'list' those spaces show as "-"
+            b.ascii = vim.tbl_map(function(l)
+              return (l:gsub("%s+$", ""))
+            end, vim.split((r.stdout:gsub("%s+$", "")), "\n"))
           end
           done()
         end)

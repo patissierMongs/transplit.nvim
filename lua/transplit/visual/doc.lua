@@ -4,7 +4,15 @@ local M = {}
 ---Some models wrap the whole document in a ```markdown fence.
 function M.clean(text)
   text = vim.trim(text)
-  return text:match("^```m[a-z]*\n(.*)\n```$") or text
+  text = text:match("^```m[a-z]*\n(.*)\n```$") or text
+  -- a fix response sometimes starts with an explanation before the document itself
+  if not text:match("^# ") then
+    local start = text:find("\n# ")
+    if start then
+      text = text:sub(start + 1)
+    end
+  end
+  return text
 end
 
 ---@class transplit.Block
