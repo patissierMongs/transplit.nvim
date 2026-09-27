@@ -1,0 +1,97 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>transplit</title>
+<style>
+  :root { color-scheme: light dark; --bg:#ffffff; --fg:#1f2328; --muted:#656d76; --border:#d0d7de; --code:#f6f8fa; --err:#cf222e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#0d1117; --fg:#e6edf3; --muted:#8d96a0; --border:#30363d; --code:#161b22; --err:#ff7b72; }
+  }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 system-ui, sans-serif; }
+  main { max-width:1200px; margin:0 auto; padding:24px 16px 64px; }
+  h1 { font-size:1.6em; border-bottom:1px solid var(--border); padding-bottom:.3em; }
+  h2 { font-size:1.25em; margin-top:2em; }
+  table { border-collapse:collapse; display:block; overflow-x:auto; margin:12px 0; }
+  th, td { border:1px solid var(--border); padding:4px 10px; text-align:left; }
+  pre { background:var(--code); padding:12px; overflow-x:auto; border-radius:6px; }
+  code { font-family:ui-monospace, "JetBrains Mono", monospace; font-size:13px; }
+  .diagram { overflow-x:auto; border:1px solid var(--border); border-radius:8px; padding:16px; margin:12px 0; text-align:center; cursor:zoom-in; }
+  .diagram svg, .diagram img { max-width:100%; height:auto; background:#fff; border-radius:4px; }
+  .diagram.full { cursor:zoom-out; } .diagram.full svg, .diagram.full img { max-width:none; }
+  .diagram.err { border-color:var(--err); text-align:left; cursor:auto; }
+  .diagram.err b { color:var(--err); }
+  #status { position:fixed; top:8px; right:12px; color:var(--muted); font-size:12px; background:var(--bg); padding:2px 8px; border-radius:4px; }
+</style>
+<div id="status"></div>
+<main id="doc">{{LOADING}}</main>
+<script src="https://cdn.jsdelivr.net/npm/marked@15/lib/marked.umd.js"></script>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+const base = location.pathname.replace(/\/$/, "");
+const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+// raw HTML in the document is shown as text: the content comes from arbitrary files
+marked.use({ renderer: { html(token) { return esc(typeof token === "string" ? token : token.text); } } });
+mermaid.initialize({ startOnLoad: false, theme: dark ? "dark" : "default", securityLevel: "strict" });
+let version = -1, seq = 0;
+
+function box(code) {
+  const div = document.createElement("div");
+  div.className = "diagram";
+  div.onclick = () => div.classList.toggle("full");
+  code.parentElement.replaceWith(div);
+  return div;
+}
+
+async function render(doc) {
+  const root = document.getElementById("doc");
+  root.innerHTML = marked.parse(doc.markdown);
+  // D2 blocks were compiled by nvim; errors there are fixed before they get here
+  [...root.querySelectorAll("pre > code.language-d2")].forEach((code, i) => {
+    const img = document.createElement("img");
+    img.src = `${base}/svg/${i + 1}?v=${doc.version}`;
+    img.alt = "D2 diagram " + (i + 1);
+    box(code).appendChild(img);
+  });
+  // Mermaid is rendered here, so its errors are reported back for an automatic fix
+  const errors = [];
+  for (const [index, code] of [...root.querySelectorAll("pre > code.language-mermaid")].entries()) {
+    const src = code.textContent;
+    const div = box(code);
+    const id = "m" + seq++;
+    try {
+      await mermaid.parse(src);
+      div.innerHTML = (await mermaid.render(id, src)).svg;
+    } catch (e) {
+      const message = String((e && e.message) || e);
+      document.getElementById("d" + id)?.remove();
+      div.classList.add("err");
+      div.onclick = null;
+      div.innerHTML = "<b>{{ERROR}}</b><pre></pre><pre></pre>";
+      const pres = div.querySelectorAll("pre");
+      pres[0].textContent = message;
+      pres[1].textContent = src;
+      errors.push({ index, message: message.slice(0, 1500) });
+    }
+  }
+  if (errors.length) {
+    fetch(base + "/error", { method: "POST", body: JSON.stringify({ version: doc.version, errors }) });
+  }
+}
+
+async function poll() {
+  try {
+    const doc = await (await fetch(base + "/doc", { cache: "no-store" })).json();
+    document.getElementById("status").textContent = doc.status || "";
+    if (doc.version !== version) {
+      version = doc.version;
+      document.title = doc.title;
+      await render(doc);
+    }
+  } catch (e) {
+    document.getElementById("status").textContent = "{{DISCONNECTED}}";
+  }
+  setTimeout(poll, 1000);
+}
+poll();
+</script>

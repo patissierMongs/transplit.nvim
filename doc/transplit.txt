@@ -1,0 +1,157 @@
+*transplit.txt*  Context-aware LLM translation, explanation and visualization
+
+==============================================================================
+CONTENTS                                                   *transplit-contents*
+
+  1. Introduction ........................... |transplit-intro|
+  2. Commands ............................... |transplit-commands|
+  3. Setup .................................. |transplit-setup|
+  4. Translation ............................ |transplit-translate|
+  5. Explanation ............................ |transplit-explain|
+  6. Visualization .......................... |transplit-visual|
+  7. What is sent ........................... |transplit-privacy|
+  8. Troubleshooting ........................ |transplit-troubleshooting|
+
+==============================================================================
+1. INTRODUCTION                                               *transplit-intro*
+
+transplit translates, explains and visualizes whatever you are reading in
+Neovim: logs, man pages, `--help` output, config files, source code, command
+output piped into `nvim -`, and packet captures.
+
+Requirements: Neovim 0.10+, and either the Claude Code CLI (`claude`) or
+$ANTHROPIC_API_KEY with `curl`. Optional: `d2`, `emacsclient`, a browser,
+`tcpdump`/`tshark`. Run |:checkhealth| transplit.
+
+==============================================================================
+2. COMMANDS                                                *transplit-commands*
+
+:TransSplit[!]                                                   *:TransSplit*
+    Toggle the translation pane to the right of the current window. Without
+    [!] the page around the cursor (plus one page above and below) is
+    translated, extending as you scroll. With [!] the whole file is
+    translated, with a few requests in flight.
+
+:TransSplitRetry                                            *:TransSplitRetry*
+    Retry lines whose translation failed validation.
+
+:[range]TransExplain                                           *:TransExplain*
+    Explain the cursor line, or [range], using the surrounding lines and the
+    file's context.
+
+:TransExplainFile                                          *:TransExplainFile*
+    Explain the whole file.
+
+:[range]TransVisual                                             *:TransVisual*
+    Visualize the file as diagrams, focusing on [range] when given.
+
+:TransVisualEmacs                                         *:TransVisualEmacs*
+:TransVisualBrowser                                     *:TransVisualBrowser*
+    Show the last visualization in Emacs or in a browser.
+
+:TransClearCache[!]                                         *:TransClearCache*
+    Clear cached translations and the profile of the current file, or of all
+    files with [!].
+
+==============================================================================
+3. SETUP                                                      *transplit-setup*
+
+>lua
+    require("transplit").setup({
+      target = "Korean",   -- language of translations and explanations
+      ui_lang = nil,       -- "ko" | "en" | nil (follow target)
+      backend = "auto",    -- "auto" | "api" | "cli"
+      keymaps = false,     -- true, or a table overriding the defaults
+    })
+<
+                                                    *transplit-config-options*
+target          Language translations and explanations are written in.
+ui_lang         Language of the plugin's own messages and section headings.
+backend         "api" uses the Anthropic API via `curl` ($ANTHROPIC_API_KEY),
+                "cli" the Claude Code CLI; "auto" prefers the API when the
+                key is set.
+cli             CLI executable. Default "claude".
+translate       { cli_model, api_model, max_tokens, batch, context, parallel }
+                `batch`: unique templates per request; `context`: lines
+                around the cursor sent for meaning; `parallel`: concurrent
+                requests in whole-file mode.
+explain         { cli_model, api_model, max_tokens, radius }
+                `radius`: lines around the target sent as the excerpt.
+visual          { cli_model, api_model, max_tokens, open_cmd }
+                `open_cmd`: argv the viewer URL is appended to.
+head, tail      Lines from the top/bottom used to build a file's profile.
+tree_depth      Depth of the directory trees sent as context.
+tree_max        Entries per directory tree.
+body_max        Bytes of a file sent verbatim; larger files are summarized as
+                head, tail and recurring line patterns.
+related_max     Files referenced by relative path to include.
+cache_file      Default: stdpath("cache") .. "/transplit/cache.json"
+visual_dir      Default: stdpath("cache") .. "/transplit/visual"
+keymaps         `true` enables:
+                  <leader>tk  translate      <leader>tK  translate whole
+                  <leader>te  explain (n, x) <leader>tE  explain file
+                  <leader>tv  visualize (n, x)
+                A table maps the same keys (translate, translate_whole,
+                explain, explain_file, visualize) to other lhs; `false` for
+                a key disables it.
+
+==============================================================================
+4. TRANSLATION                                            *transplit-translate*
+
+The pane always has exactly one line per source line, bound with
+'scrollbind' and 'cursorbind', and 'wrap' off so lines stay aligned. Lines
+not translated yet show the original text dimmed.
+
+Timestamps, bracketed tokens, IPs, URLs, host names, paths, quoted strings
+and anything containing digits are masked into placeholders before a line is
+sent, and only unique templates are translated. The values are restored
+locally, so they can't be altered, and lines of the same shape share one
+translation. A translation is accepted only if it kept exactly the same
+placeholders. Indentation is re-attached locally.
+
+The first request for a file also asks for a short "profile" of it (what it
+is, its format, terms to keep). Later requests send the profile instead of
+the raw head/tail lines and directory trees.
+
+==============================================================================
+5. EXPLANATION                                              *transplit-explain*
+
+Explanations stream into a shared window on the right. Line explanations
+have the sections meaning / context / in practice / see also; whole-file
+explanations overview / structure / key points / watch out / next steps.
+The headings follow the UI language.
+
+==============================================================================
+6. VISUALIZATION                                             *transplit-visual*
+
+The model writes a Markdown document with D2 diagrams (and Mermaid only for
+packet, pie and xy charts, which D2 lacks). Every D2 block is compiled
+locally: compile errors, and labels containing non-ASCII text, are sent back
+to the model for a fix, at most twice.
+
+In the view window:
+    gs      edit the source Markdown; |:w| re-renders every view
+    ge      open in Emacs (Org with inline SVG images)
+    gb      open in a browser (also renders Mermaid and reports its errors)
+
+The browser view is served by a small HTTP server inside Neovim, bound to
+127.0.0.1, with a random token in every path.
+
+==============================================================================
+7. WHAT IS SENT                                             *transplit-privacy*
+
+Part or all of the buffer; the file's path, size, filetype and the cwd;
+directory trees (names and sizes only); the first 200 lines of files the
+current file references by relative path. Absolute paths, files outside the
+file's directory and the cwd, names that look like secrets (.env, keys,
+tokens, passwords) and binary files are never sent.
+
+==============================================================================
+8. TROUBLESHOOTING                                  *transplit-troubleshooting*
+
+- Lines stay dimmed: run |:TransSplitRetry|. The last raw response is in
+  `require("transplit.translate").last_response`.
+- Wrong or stale translations: |:TransClearCache|.
+- Visualization says d2 is missing: install D2 (https://d2lang.com).
+
+ vim:tw=78:ts=8:ft=help:norl:

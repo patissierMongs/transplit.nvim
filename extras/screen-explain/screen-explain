@@ -1,0 +1,265 @@
+#!/usr/bin/env python3
+"""Explain what is on screen right now, in a new pane next to the focused window.
+
+Bound to the ThinkVantage key in sway (xkb keycode 156, KEY_PROG1):
+  single tap   explain the whole screen
+  double tap   ask a question about the screen (typed into the new pane)
+The EC reports ThinkVantage as one event and the driver emits press+release
+together, so a long press can't be detected; a double tap is used instead.
+
+  screen-explain --tap                 key handler; waits DOUBLE_TAP for a second tap
+  screen-explain [explain|ask]         capture: screenshot of the focused output +
+                                       focused-window context (app, title, and for
+                                       terminals the command and cwd running inside),
+                                       then open a foot pane to the right
+  screen-explain --run DIR MODE        inside that pane: stream Claude's answer, then
+                                       reopen it read-only in nvim (q closes the pane)
+
+Only names/paths/titles are sent as text context; file contents are never read.
+"""
+import json
+import os
+import subprocess
+import sys
+import time
+
+MODEL = "sonnet"
+DOUBLE_TAP = 0.4  # seconds
+TAP_FILE = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "screen-explain.tap")
+BASE = os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "screen-explain")
+SELF = os.path.realpath(__file__)
+
+SYSTEM = """You explain to an engineer what is currently on their screen, in Korean.
+You get a screenshot (read screen.png with the Read tool) and <context> about the focused window.
+Be concrete and concise. Use Markdown with these sections:
+## 화면 요약 (1-3 sentences: which app, what the user is looking at or doing)
+## 자세히 (the important content: explain code, errors, logs, settings, UI state or documents
+   that are visible; quote short snippets exactly; if there is an error, say what it means)
+## 다음에 할 수 있는 것 (concrete next steps, commands or shortcuts; only when useful)
+Focus on the focused window; mention other visible windows only briefly.
+Do not invent content you cannot read in the screenshot; say so if text is too small or cut off."""
+
+SYSTEM_ASK = """You answer an engineer's question about what is currently on their screen, in Korean.
+You get a screenshot (read screen.png with the Read tool), <context> about the focused window,
+and their <question>. Answer the question directly first, then give only the supporting detail
+that helps (quote short on-screen snippets exactly, give commands in code blocks).
+Use Markdown. Do not invent content you cannot read in the screenshot; say so if text is too
+small or cut off."""
+
+
+def sway(*args):
+    return json.loads(subprocess.run(["swaymsg", "-t", *args], capture_output=True, text=True).stdout)
+
+
+def focused(node):
+    if node.get("focused"):
+        return node
+    for child in node.get("nodes", []) + node.get("floating_nodes", []):
+        found = focused(child)
+        if found:
+            return found
+    return None
+
+
+def children(pid):
+    try:
+        with open(f"/proc/{pid}/task/{pid}/children") as f:
+            return [int(p) for p in f.read().split()]
+    except OSError:
+        return []
+
+
+def proc_info(pid):
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            cmd = f.read().replace(b"\0", b" ").decode(errors="replace").strip()
+        return cmd, os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        return None, None
+
+
+def capture(mode):
+    tree = sway("get_tree")
+    win = focused(tree) or {}
+    output = next((o["name"] for o in sway("get_outputs") if o.get("focused")), None)
+
+    out_dir = os.path.join(BASE, time.strftime("%Y%m%d-%H%M%S"))
+    os.makedirs(out_dir, exist_ok=True)
+    shot = os.path.join(out_dir, "screen.png")
+    subprocess.run(["grim", *(["-o", output] if output else []), shot], check=True)
+
+    ctx = [
+        f"focused app: {win.get('app_id') or (win.get('window_properties') or {}).get('class') or 'unknown'}",
+        f"window title: {win.get('name', '')}",
+    ]
+    # for terminals, what runs inside is more telling than the terminal itself
+    pid = win.get("pid")
+    chain, seen = [], set()
+    while pid and pid not in seen and len(chain) < 6:
+        seen.add(pid)
+        kids = children(pid)
+        if not kids:
+            break
+        pid = kids[-1]
+        cmd, cwd = proc_info(pid)
+        if cmd:
+            chain.append(f"  {cmd[:200]}  (cwd: {cwd})")
+    if chain:
+        ctx.append("processes inside the window (outermost first):")
+        ctx.extend(chain)
+    with open(os.path.join(out_dir, "context.txt"), "w") as f:
+        f.write("\n".join(ctx) + "\n")
+
+    # split the focused window and put the explanation to its right
+    subprocess.run(["swaymsg", "split", "horizontal"], capture_output=True)
+    subprocess.Popen(
+        ["foot", "--app-id=screen-explain", "--title=화면 " + ("질문" if mode == "ask" else "설명"),
+         SELF, "--run", out_dir, mode],
+        start_new_session=True,
+    )
+
+
+def ask_line(prompt):
+    """Read one line. \001..\002 marks non-printing bytes, or readline miscounts the
+    prompt width and overwrites the first line instead of wrapping."""
+    import readline  # noqa: F401  line editing for input()
+
+    try:
+        return input(f"\001\033[1m\002{prompt}\001\033[0m\002 ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return ""
+
+
+def claude_stream(out_dir, system, prompt):
+    """Run one turn, printing it as it arrives; returns the full text."""
+    cmd = [
+        "claude", "-p", "--model", MODEL,
+        "--tools", "Read", "--allowedTools", "Read",
+        "--strict-mcp-config", "--setting-sources=", "--no-session-persistence",
+        "--system-prompt", system,
+        "--output-format", "stream-json", "--verbose", "--include-partial-messages",
+    ]
+    env = dict(os.environ, MAX_THINKING_TOKENS="0")
+    print("\033[2m⏳ 화면을 읽는 중…\033[0m\n", flush=True)
+    text = []
+    proc = subprocess.Popen(cmd, cwd=out_dir, env=env, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True)
+    proc.stdin.write(prompt)
+    proc.stdin.close()
+    for line in proc.stdout:
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        ev = ev.get("event", {}) if ev.get("type") == "stream_event" else {}
+        delta = ev.get("delta", {}) if ev.get("type") == "content_block_delta" else {}
+        if delta.get("type") == "text_delta":
+            text.append(delta["text"])
+            print(delta["text"], end="", flush=True)
+    proc.wait()
+    return "".join(text), proc
+
+
+def run(out_dir, mode):
+    with open(os.path.join(out_dir, "context.txt")) as f:
+        context = f.read()
+    base = f"<context>\n{context}</context>"
+    question = ask_line("화면에 대해 질문:") if mode == "ask" else ""
+    if mode == "ask" and not question:
+        return
+    print()
+
+    # each turn re-reads the screenshot and carries the previous turns as text,
+    # so follow-ups stay about the same screen
+    doc, history = [], []
+    while True:
+        if question:
+            system, prompt = SYSTEM_ASK, f"Read screen.png and answer the question.\n{base}"
+            doc.append(f"> **질문:** {question}\n")
+        else:
+            system, prompt = SYSTEM, f"Read screen.png and explain the screen.\n{base}"
+        if history:
+            prompt += "\n<previous_turns>\n" + "\n".join(history) + "\n</previous_turns>"
+        if question:
+            prompt += f"\n<question>{question}</question>"
+
+        text, proc = claude_stream(out_dir, system, prompt)
+        if not text:
+            doc.append(f"⚠ 실패\n\n```\n{proc.stderr.read()[:2000]}\n```")
+            print(f"\n⚠ 실패 (exit {proc.returncode}). Enter를 누르면 닫혀요.")
+            ask_line("")
+            break
+        doc.append(text)
+        history.append(f"Q: {question or '(화면 설명 요청)'}\nA: {text}")
+
+        print("\n")
+        question = ask_line("추가 질문 (그냥 Enter: 읽기 모드로):")
+        if not question:
+            break
+        print()
+
+    md = os.path.join(out_dir, "explain.md")
+    with open(md, "w") as f:
+        f.write("\n\n".join(doc) + "\n")
+    # reopen in nvim for scrolling, rendered markdown and copying; q closes the pane
+    os.execvp("nvim", ["nvim", "-R", "-c", "nnoremap <buffer> q <cmd>qa!<cr>", md])
+
+
+def tap():
+    """A second tap within DOUBLE_TAP asks; otherwise the first tap explains."""
+    import fcntl
+
+    now = time.monotonic()  # CLOCK_MONOTONIC is system-wide: comparable across processes
+    with open(TAP_FILE, "a+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        f.seek(0)
+        prev = f.read().split()
+        f.seek(0)
+        f.truncate()
+        if len(prev) == 2 and prev[1] == "pending" and now - float(prev[0]) < DOUBLE_TAP:
+            f.write(f"{now} consumed")
+            double = True
+        else:
+            f.write(f"{now} pending")
+            double = False
+    if double:
+        return capture("ask")
+    time.sleep(DOUBLE_TAP)
+    with open(TAP_FILE, "r+") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        state = f.read().split()
+        # still our tap and nobody turned it into a double tap
+        if state == [str(now), "pending"]:
+            f.seek(0)
+            f.truncate()
+            f.write(f"{now} consumed")
+            mine = True
+        else:
+            mine = False
+    if mine:
+        capture("explain")
+
+
+LOG = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "screen-explain.log")
+
+
+def main(args):
+    if len(args) == 3 and args[0] == "--run":
+        run(args[1], args[2])
+    elif args == ["--tap"]:
+        tap()
+    else:
+        capture(args[0] if args else "explain")
+
+
+if __name__ == "__main__":
+    # sway discards the output of `exec`, so failures would otherwise be silent
+    with open(LOG, "a") as log:
+        log.write(f"{time.strftime('%H:%M:%S')} {sys.argv[1:]}\n")
+    try:
+        main(sys.argv[1:])
+    except Exception:
+        import traceback
+        with open(LOG, "a") as log:
+            traceback.print_exc(file=log)
+        raise

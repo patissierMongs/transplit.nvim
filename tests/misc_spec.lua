@@ -1,0 +1,76 @@
+local config = require("transplit.config")
+local llm = require("transplit.llm")
+local server = require("transplit.visual.server")
+local visual = require("transplit.visual")
+
+describe("config", function()
+  it("merges options deeply", function()
+    local o = config.setup({ translate = { batch = 10 } })
+    assert.are.equal(10, o.translate.batch)
+    assert.are.equal(3, o.translate.parallel)
+  end)
+
+  it("follows the target language for the UI unless set", function()
+    config.setup({ target = "Korean" })
+    assert.are.equal("ko", config.lang())
+    config.setup({ target = "Japanese" })
+    assert.are.equal("en", config.lang())
+    config.setup({ target = "Japanese", ui_lang = "ko" })
+    assert.are.equal("ko", config.lang())
+    assert.are.equal("분석 중…", config.msg("analyzing"))
+    config.setup({})
+  end)
+end)
+
+describe("llm", function()
+  it("extracts text deltas from both stream formats", function()
+    local cli =
+      '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"text_delta","text":"hi"}}}'
+    local api = 'data: {"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"yo"}}'
+    local thinking = '{"type":"stream_event","event":{"type":"content_block_delta","delta":{"type":"thinking_delta"}}}'
+    assert.are.equal("hi", llm.delta_text(cli))
+    assert.are.equal("yo", llm.delta_text(api))
+    assert.is_nil(llm.delta_text(thinking))
+    assert.is_nil(llm.delta_text("event: ping"))
+  end)
+
+  it("honours a forced backend", function()
+    config.setup({ backend = "cli" })
+    assert.are.equal("cli", llm.backend())
+    config.setup({ backend = "api" })
+    assert.are.equal("api", llm.backend())
+    config.setup({})
+  end)
+end)
+
+describe("visual server", function()
+  it("waits for the full body before handling a request", function()
+    local head = "POST /t/i/error HTTP/1.1\r\nHost: x\r\nContent-Length: 5\r\n\r\n"
+    assert.is_nil(server.parse_request("GET / HTTP/1.1\r\nHost: x\r\n"))
+    assert.is_nil(server.parse_request(head .. "ab"))
+    local req = server.parse_request(head .. "abcde")
+    assert.are.same({ method = "POST", path = "/t/i/error", body = "abcde" }, req)
+  end)
+
+  it("makes random hex tokens", function()
+    local a, b = server.hex(16), server.hex(16)
+    assert.are.equal(32, #a)
+    assert.is_truthy(a:match("^%x+$"))
+    assert.are_not.equal(a, b)
+  end)
+end)
+
+describe("visual prompts", function()
+  it("turns D2 compiler output into line:col messages", function()
+    local stderr = "err: failed to compile /tmp/x/1.d2: /tmp/x/1.d2:1:9: maps must be terminated with }\n"
+    assert.are.equal("line 1:9: maps must be terminated with }", visual.d2_error(stderr, "/tmp/x/1.d2"))
+  end)
+
+  it("keeps D2 labels ASCII and marks guesses per UI language", function()
+    config.setup({ target = "Korean" })
+    local p = visual.system_prompt()
+    assert.is_truthy(p:find("(추정)", 1, true))
+    assert.is_truthy(p:find("must never contain Korean", 1, true))
+    config.setup({})
+  end)
+end)
